@@ -21,9 +21,9 @@ Keine Abhängigkeiten außer Python 3. Keine Dateien, kein Zustand, kein Netzwer
 
 ## Was drin ist
 
-- **141 handgeschriebene Fragen** über 14 Themen: Unix vs. Linux, Boot-Prozess, Prozesse & Signale, Dateisystem & Rechte, Performance, SSH & Benutzer, Patchmanagement (dnf/Satellite), SELinux, systemd, LVM, firewalld, TCP/IP-Grundlagen (DHCP, VLANs, ARP, Routing, NAT), Ansible, ITIL/Incident-Denken.
+- **174 handgeschriebene Fragen** über 14 Themen: Unix vs. Linux, Boot-Prozess, Prozesse & Signale, Dateisystem & Rechte, Performance, SSH & Benutzer, Patchmanagement (dnf/Satellite), SELinux, systemd, LVM, firewalld, TCP/IP-Grundlagen (DHCP, VLANs, ARP, Routing, NAT), Ansible, ITIL/Incident-Denken.
 - **14 Generator-Archetypen** mit Parameter-Pools: Oktal-Rechte in beide Richtungen, Load-Average-Szenarien mit echten Zahlen, Befehls-Drills (dnf, SELinux, journalctl, firewalld, LVM, systemctl) in beide Richtungen, Standardports, Konfigurationspfade, Ansible-Module — und ein **Subnetting-Generator** (nutzbare Hosts, Masken, Netz-/Broadcast-Adressen), dessen CIDR-Mathematik testweise gegen Pythons `ipaddress`-Modul verifiziert ist.
-- **712 distinkte Fragen**, gemessen über die Seeds 1–30000.
+- **745 distinkte Fragen**, gemessen über die Seeds 1–30000.
 - Jede Antwort kommt mit Erklärung — das *Warum*, nicht nur das *Was*.
 - Jede Session endet mit dem fertigen Replay-Kommando für alles, was falsch war.
 

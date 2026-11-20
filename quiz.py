@@ -912,6 +912,86 @@ STATIC = [
       "Ein Incident mit mehr als einem Ticket"],
      "Der Kern: Bei Major trennt man Rollen — einer koordiniert und kommuniziert, andere schrauben. Genau das Muster deiner Kommunikations-Story."),
 
+    # ---------------- scripting (N2 Bash-Scripting) ----------------
+    ("scripting", "Unterschied zwischen 'text $var' in einfachen und doppelten Anführungszeichen?",
+     ["Doppelte expandieren Variablen und $(…); einfache nehmen alles wörtlich — '$var' bleibt buchstäblich $var",
+      "Einfache sind schneller, sonst identisch",
+      "Doppelte verhindern Leerzeichen-Probleme nicht, einfache schon",
+      "Einfache gelten nur innerhalb von Funktionen"],
+     "Faustregel: doppelt ist der Default fürs Arbeiten mit Variablen, einfach für wörtliche Strings (z. B. awk-Programme)."),
+    ("scripting", "Ein Skript scheitert bei Dateien mit Leerzeichen im Namen ('rm $file' löscht Falsches). Die Ursache?",
+     ["Unquotete Variablen durchlaufen Word-Splitting und Globbing — 'mein backup.log' wird zu zwei Argumenten. Heilung: \"$file\" konsequent quoten",
+      "Bash kann Leerzeichen in Dateinamen grundsätzlich nicht verarbeiten",
+      "rm braucht bei Leerzeichen die Option -s",
+      "Das Dateisystem erlaubt solche Namen nicht"],
+     "Die häufigste Bash-Fehlerklasse überhaupt. shellcheck findet genau solche Stellen — gehört in jede CI, auch in deine."),
+    ("scripting", "Was steht in $? — und wie nutzt du es in einer Befehlskette?",
+     ["Der Exit-Code des letzten Befehls: 0 = Erfolg, alles andere = Fehler — Ketten: befehl && weiter-bei-erfolg || sonst-das",
+      "Die PID des letzten Befehls",
+      "Die Anzahl der Argumente des Skripts",
+      "Der Name des laufenden Skripts"],
+     "Darauf baut alles: if-Abfragen, Monitoring-Checks, Ansible-Rückmeldungen. Eigene Skripte sollten selbst saubere Exit-Codes setzen (exit 1 bei Fehler)."),
+    ("scripting", "Warum beginnen robuste Betriebs-Skripte mit 'set -euo pipefail'?",
+     ["-e: Abbruch beim ersten Fehler statt Weiterwursteln; -u: ungesetzte Variablen sind Fehler (Tippfehler-Schutz); pipefail: eine Pipe scheitert, wenn IRGENDEIN Glied scheitert",
+      "Es aktiviert den POSIX-Kompatibilitätsmodus",
+      "Es schreibt automatisch ein Logfile",
+      "Es verhindert, dass das Skript zweimal läuft"],
+     "Ohne -u löscht 'rm -rf \"$BASEDIR/\"' bei einem Tippfehler in BASEDIR das falsche Verzeichnis — der Klassiker. Defensive Defaults sind Betriebsdisziplin."),
+    ("scripting", "Unterschied \"$@\" vs. \"$*\" bei der Weitergabe von Skript-Argumenten?",
+     ["\"$@\" gibt jedes Argument einzeln und intakt weiter (auch mit Leerzeichen); \"$*\" verklebt alle zu EINEM String",
+      "Kein Unterschied, zwei Schreibweisen",
+      "$* enthält auch den Skriptnamen, $@ nicht",
+      "$@ funktioniert nur in Funktionen"],
+     "Wrapper-Skripte brauchen fast immer \"$@\" — sonst zerbrechen Argumente mit Leerzeichen beim Durchreichen."),
+    ("scripting", "[ ] vs. [[ ]] in Bash — warum bevorzugt man [[ ]]?",
+     ["[[ ]] ist Bash-Syntax statt externem test-Kommando: kein Word-Splitting der Variablen, Pattern-Matching mit ==, && / || direkt darin — weniger Quoting-Fallen",
+      "[[ ]] ist POSIX-portabler als [ ]",
+      "[ ] kann keine Zahlen vergleichen",
+      "[[ ]] läuft als eigener Prozess und ist isolierter"],
+     "Ehrliche Kehrseite: [[ ]] ist NICHT POSIX — im portablen #!/bin/sh-Skript (Stichwort AIX) bleibt es bei [ ] mit sauberem Quoting."),
+    ("scripting", "Wofür steht $(befehl) — und warum ist es Backticks vorzuziehen?",
+     ["Command Substitution: Die Ausgabe des Befehls wird eingesetzt — $() ist schachtelbar und lesbar, Backticks sind es nicht",
+      "Es startet den Befehl im Hintergrund",
+      "Es prüft nur den Exit-Code, ohne Ausgabe",
+      "Es führt den Befehl in einer anderen Shell-Sprache aus"],
+     "heute=$(date +%F) — das Arbeitspferd für dynamische Werte. In Anführungszeichen setzen: \"$(…)\", sonst Word-Splitting."),
+    ("scripting", "Ein Skript verhält sich falsch und du willst sehen, was es Zeile für Zeile wirklich tut. Dein Werkzeug?",
+     ["bash -x skript.sh (oder set -x für einen Abschnitt) — der Trace zeigt jede expandierte Zeile vor der Ausführung",
+      "strace -f auf die Bash-PID",
+      "cat -A skript.sh",
+      "bash --verify skript.sh"],
+     "Der Trace zeigt die Zeilen NACH der Variablen-Expansion — genau da sieht man Quoting- und Tippfehler. shellcheck davor, bash -x danach."),
+    ("scripting", "Dein Skript läuft von Hand perfekt, unter Cron scheitert es. Die üblichen Verdächtigen?",
+     ["Cron hat Minimal-Umgebung: kaum PATH, kein Profil, kein TTY, anderes Arbeitsverzeichnis — Heilung: absolute Pfade, benötigte Variablen im Skript setzen, Ausgabe in ein Log umleiten",
+      "Cron führt Skripte grundsätzlich als nobody aus",
+      "Cron kann keine Bash-Skripte, nur sh",
+      "Das Skript braucht das SetUID-Bit für Cron"],
+     "DIE Klassiker-Interviewfrage zu Scripting im Betrieb. Bei systemd-Timern gilt dasselbe Prinzip: Units erben dein Login-Environment nicht."),
+    ("scripting", "Eine Datei zeilenweise sicher verarbeiten — die korrekte Schleife?",
+     ["while IFS= read -r zeile; do …; done < datei — read -r lässt Backslashes in Ruhe, IFS= erhält führende Leerzeichen",
+      "for zeile in $(cat datei); do …; done",
+      "cat datei | foreach zeile",
+      "loop datei as zeile"],
+     "Die for-cat-Variante zerhackt an JEDEM Leerzeichen, nicht an Zeilenenden — beliebte Falle. Für große Dateien ist while read auch speicherschonend."),
+    ("scripting", "Unterschied ./skript.sh ausführen vs. source skript.sh?",
+     ["./ startet eine neue Shell (Subshell): Variablen/cd bleiben dort; source führt im AKTUELLEN Prozess aus — Änderungen wirken in deiner Sitzung weiter",
+      "source funktioniert ohne Leserechte",
+      "./ ist schneller, sonst gleich",
+      "source prüft die Syntax, ohne auszuführen"],
+     "Deshalb wird ~/.bashrc ge-sourced, nicht ausgeführt. Und ./ braucht x-Bit + Shebang; 'bash skript.sh' umgeht nur das x-Bit."),
+    ("scripting", "Temporäre Dateien im Skript — der sichere Weg?",
+     ["tmp=$(mktemp) — erzeugt kollisions- und symlink-sicher eine exklusive Datei; fester Name wie /tmp/work.txt ist angreifbar (Race/Symlink)",
+      "echo > /tmp/skriptname.tmp reicht",
+      "Temp-Dateien gehören nach /var/tmp, dann sind sie sicher",
+      "In Bash braucht man nie temporäre Dateien"],
+     "In /tmp darf jeder schreiben (Sticky Bit hin oder her) — vorhersagbare Namen sind ein klassischer Security-Fund. mktemp -d für Verzeichnisse."),
+    ("scripting", "Dein Skript legt Temp-Dateien und Locks an. Wie stellst du sicher, dass bei JEDEM Ende aufgeräumt wird — auch bei Fehlern und Ctrl+C?",
+     ["trap 'rm -f \"$tmp\"' EXIT — der Handler läuft bei jedem Skript-Ende, egal ob Erfolg, Fehler oder Signal",
+      "Das Aufräumen als letzte Zeile des Skripts reicht",
+      "Bash räumt eigene Temp-Dateien automatisch ab",
+      "Dafür braucht es einen zweiten Cron-Job"],
+     "trap … EXIT ist das Bash-Pendant zum Handler-Gedanken: Aufräumen gehört an den Lebenszyklus gebunden, nicht an den Gutfall. Liegengebliebene Locks sind sonst der nächste Incident."),
+
     # ---------------- Vertiefung II: Szenarien & Praxis ----------------
     ("patch", "Was unterscheidet RHSA, RHBA und RHEA bei Red-Hat-Errata?",
      ["RHSA = Security Advisory (mit Severity), RHBA = Bugfix, RHEA = Enhancement — die Priorisierung im Patchmanagement hängt am Typ",
@@ -1000,6 +1080,197 @@ STATIC = [
       "Den RAM-Cache per drop_caches regelmäßig leeren",
       "Die DB in eine RAM-Disk verlegen"],
      "Interview-Haltung: Tuning-Parameter nennen können, aber mit 'erst instrumentieren, dann drehen'. Pauschales swapoff kostet den Notfallpuffer — dann kommt der OOM-Killer früher."),
+
+    # ---- S1: Troubleshooting-Szenarien (Pruefungsstil) ----
+    ("szenario",
+     "Nach einem Content-Umzug von /home/web nach /var/www liefert Apache nur noch 403. "
+     "httpd laeuft, die Rechte sind 644/755, der Owner stimmt. ls -lZ zeigt: "
+     "'unconfined_u:object_r:user_home_t:s0 index.html'. Wahrscheinlichste Ursache?",
+     ["Die Dateien tragen noch den SELinux-Kontext ihres alten Ortes (user_home_t) — httpd darf httpd_sys_content_t lesen, user_home_t nicht; restorecon -Rv /var/www behebt es",
+      "Apache braucht nach jedem Content-Wechsel einen vollstaendigen Neustart, nicht nur ein reload",
+      "644 reicht fuer Webcontent nicht, Webdateien brauchen mindestens 664",
+      "Der VirtualHost muss bei Pfadwechseln neu signiert werden"],
+     "Der Klassiker: mv nimmt den SELinux-Kontext MIT, cp vergibt den des Ziels. 403 trotz korrekter "
+     "DAC-Rechte + falscher Type in ls -lZ = SELinux. Erst Beweis (ls -lZ, ausearch), dann restorecon."),
+
+    ("szenario",
+     "Ein Server haengt nach dem Reboot im Emergency Mode. journalctl -xb zeigt: "
+     "'Failed to mount /data' und 'Dependency failed for Local File Systems'. "
+     "Gestern wurde eine alte Datenplatte ausgebaut. Deine Massnahme?",
+     ["Den /data-Eintrag in /etc/fstab auskommentieren (oder kuenftig mit Option 'nofail' versehen), mount -a testen, dann normal weiterbooten",
+      "Die Platte wieder einbauen — ohne sie ist das System nicht bootfaehig",
+      "initramfs mit dracut neu bauen, da sie die alte Platte noch referenziert",
+      "SELinux-Relabel per /.autorelabel erzwingen und neu starten"],
+     "Eine fstab-Leiche einer ausgebauten Platte blockiert local-fs.target und damit den Boot. "
+     "Fix: Eintrag raus oder 'nofail' fuer nicht-kritische Mounts. dracut/autorelabel adressieren "
+     "ganz andere Probleme — erst Logbeweis, dann Massnahme."),
+
+    ("szenario",
+     "Eine Applikation meldet 'No space left on device', aber df -h zeigt 40 % Belegung. Dein naechster Befehl?",
+     ["df -i — vermutlich sind die Inodes erschoepft (Millionen Kleinstdateien), nicht der Platz",
+      "fsck auf dem gemounteten Dateisystem ausfuehren, um Fehler zu reparieren",
+      "Den Server neu starten, damit der Kernel die freie Kapazitaet neu einliest",
+      "mount -o remount,rw — das Dateisystem ist offenbar read-only gefallen"],
+     "'Kein Platz' hat zwei Waehrungen: Bloecke UND Inodes. df -h voll ok + Fehler = df -i pruefen. "
+     "Typischer Ausloeser: Session-/Cache-Verzeichnisse mit Millionen kleiner Dateien. "
+     "fsck auf gemountetem FS ist tabu, Reboot ist Kaffeesatz."),
+
+    ("szenario",
+     "Ein einzelner User kann sich nicht mehr per SSH-Key anmelden, Passwort geht, andere User gehen. "
+     "Im Journal von sshd: 'Authentication refused: bad ownership or modes for directory /home/mueller'. Ursache?",
+     ["Home- oder ~/.ssh-Verzeichnis ist zu offen berechtigt (z. B. gruppen-/weltschreibbar) — sshd verweigert Key-Auth dann bewusst; chmod 700 ~/.ssh, 600 authorized_keys, Home max. 755",
+      "Der Public Key ist abgelaufen und muss neu generiert werden",
+      "sshd erlaubt pro Host nur eine begrenzte Anzahl Keys und die Quote ist erreicht",
+      "SELinux blockiert das Lesen von authorized_keys, sobald sich das Passwort aendert"],
+     "StrictModes: sshd akzeptiert Keys nur, wenn niemand ausser dem User die Dateien manipulieren "
+     "koennte. Ein 'chmod 777 /home/mueller' zum 'Fixen' eines anderen Problems ist der haeufigste "
+     "Ausloeser. Die Fehlermeldung sagt es woertlich — Logs lesen schlaegt raten."),
+
+    ("szenario",
+     "Nach einem Patchfenster startet ein Dienst nicht. systemctl status zeigt: "
+     "'Start request repeated too quickly' und 'Failed with result exit-code'. Was tust du ZUERST?",
+     ["journalctl -u dienst — den ECHTEN Fehler der gescheiterten Starts lesen; die Meldung sagt nur, dass systemd nach mehreren schnellen Fehlversuchen aufgegeben hat (StartLimit)",
+      "systemctl reset-failed und sofort erneut starten, bis es klappt",
+      "Das RPM-Paket des Dienstes neu installieren, da es offenbar beschaedigt wurde",
+      "StartLimitBurst in der Unit erhoehen, damit systemd oefter versuchen darf"],
+     "'too quickly' ist ein SYMPTOM des Rate-Limits, nie die Ursache. Der Dienst crasht beim Start — "
+     "warum, steht in journalctl -u. reset-failed ohne Diagnose wiederholt nur den Crash, "
+     "das Limit hochdrehen kaschiert ihn."),
+
+    ("szenario",
+     "Load Average 35 auf 8 Kernen, aber top zeigt 85 % idle und kaum CPU-Verbraucher. "
+     "Mehrere Prozesse stehen im Status D. In welchem Subsystem suchst du?",
+     ["Im Storage-/I/O-Pfad: D-State heisst 'uninterruptible sleep' (wartet auf I/O) und zaehlt in den Load ein — iostat -x und der Blick auf NFS-/SAN-Mounts sind der naechste Schritt",
+      "In der CPU: Load 35 bei 8 Kernen bedeutet immer CPU-Ueberlastung, top zeigt es nur falsch an",
+      "Im Speicher: hoher Load bei idle CPU ist das sichere Zeichen fuer einen Memory Leak",
+      "Im Netzwerk: Load misst primaer die Anzahl offener TCP-Verbindungen"],
+     "Linux zaehlt I/O-Blockierte in den Load ein. Hoher Load + idle CPU + D-Prozesse = die Antwort "
+     "liegt fast immer auf der Platte oder einem haengenden Netz-Mount, nicht in der CPU. "
+     "Das ist DIE Pruefungs- und Interviewfrage zur Load-Interpretation."),
+
+    ("szenario",
+     "df -h haengt einfach, ls auf /mnt/archiv haengt ebenfalls, die Shell reagiert sonst normal. "
+     "Dein Verdacht und erster Befehl?",
+     ["Ein NFS-Mount, dessen Server nicht mehr antwortet — mount | grep nfs (oder findmnt -t nfs) zeigt die Kandidaten, ohne die haengenden Pfade anzufassen",
+      "Das lokale Root-Dateisystem ist korrupt — sofort fsck einplanen",
+      "Die Shell hat ein Speicherleck — neu einloggen loest das Problem",
+      "df hat einen Bug in dieser RHEL-Version — stattdessen du -sh / verwenden"],
+     "Jeder Prozess, der einen toten NFS-Mount per stat() beruehrt (df tut genau das fuer ALLE "
+     "Dateisysteme), haengt unkillbar im D-State. Diagnose ueber Wege, die den Mount NICHT anfassen; "
+     "Abhilfe: Server pruefen, notfalls umount -f/-l und kuenftig Mount-Optionen wie soft abwaegen."),
+
+    ("szenario",
+     "/var laeuft voll: ein Dienst flutet sein Log mit GB pro Stunde. Der Kollege will die Logdatei "
+     "einfach mit rm loeschen. Deine Einordnung?",
+     ["Zwei Fehler: erst die URSACHE des Flutens stoppen/drosseln — und statt rm die Datei leeren (truncate -s 0 bzw. > datei), denn eine geloeschte, noch offen gehaltene Datei gibt den Platz nicht frei",
+      "Voellig richtig — rm ist der schnellste Weg, Platz freizugeben",
+      "Falsch, weil man Logdateien aus Compliance-Gruenden niemals anfassen darf, auch nicht im Notfall",
+      "Falsch, weil zuerst der komplette Server neu gestartet werden muss"],
+     "rm entfernt nur den Verzeichniseintrag; solange der Dienst das Handle haelt, bleibt der Platz "
+     "belegt (lsof +L1 zeigt solche Leichen). truncate leert die Datei im laufenden Betrieb. "
+     "Und ohne Ursachen-Stopp ist /var in einer Stunde wieder voll."),
+
+    ("szenario",
+     "Ein neuer Dienst auf Port 8443 ist aus dem Server-Subnetz erreichbar, aus dem Client-Subnetz "
+     "nicht. ss -tlnp zeigt: LISTEN 0.0.0.0:8443. Wo suchst du als Naechstes?",
+     ["Auf dem Pfad dazwischen: firewalld-Zonen/Quell-Regeln auf dem Server und die Netz-Firewall/Router-ACLs zwischen den Subnetzen — der Dienst selbst lauscht nachweislich korrekt auf allen Interfaces",
+      "Im Dienst: er muss zusaetzlich explizit an die IP des Client-Subnetzes gebunden werden",
+      "Am Client: vermutlich fehlt dort ein statischer ARP-Eintrag fuer den Server",
+      "In systemd: die Unit braucht After=network-online.target, sonst ist der Port nur lokal offen"],
+     "0.0.0.0:8443 beweist: Bindung ok. Funktioniert Subnetz A, aber nicht B, liegt es an etwas, das "
+     "zwischen B und dem Server unterscheidet — Zonen-Zuordnung, Rich Rules mit Quell-Einschraenkung "
+     "oder die Firewall im Netzpfad. ARP endet an der Subnetzgrenze ohnehin."),
+
+    ("szenario",
+     "Ploetzlich schlagen auf einem Server Kerberos-Logins fehl und curl meldet bei internen Diensten "
+     "'certificate is not yet valid'. Dein erster Pruefbefehl?",
+     ["timedatectl bzw. chronyc tracking/sources — beide Symptome deuten auf eine falsche Systemzeit (Kerberos toleriert nur wenige Minuten Drift, Zertifikate haben Gueltigkeitsfenster)",
+      "openssl x509 auf jedem einzelnen Dienst-Zertifikat — vermutlich wurden alle gleichzeitig kompromittiert",
+      "klist purgen und alle Keytabs neu ausrollen",
+      "Die CA-Bundle-Datei des Servers neu installieren"],
+     "'not yet valid' + Kerberos-Fehler GLEICHZEITIG = ein gemeinsamer Nenner: die Uhr. "
+     "Ein Server, dessen Zeit springt (defekte RTC, NTP unerreichbar, VM-Pause), produziert exakt "
+     "dieses Doppelsymptom. Erst Zeitquelle pruefen, dann chronyd reparieren — nie an 20 Zertifikaten schrauben."),
+
+    ("szenario",
+     "Du musst auf einem entfernten Server per SSH die Firewall umbauen und darfst dich nicht aussperren. "
+     "Der sicherste Arbeitsablauf mit firewalld?",
+     ["Aenderungen zuerst NUR zur Laufzeit setzen (ohne --permanent) und testen — sperrst du dich aus, stellt firewall-cmd --reload (oder ein Reboot) den alten, permanenten Stand wieder her; erst nach erfolgreichem Test mit --runtime-to-permanent uebernehmen",
+      "Alles direkt mit --permanent setzen und sofort --reload ausfuehren, damit nichts verloren geht",
+      "firewalld waehrend der Arbeiten stoppen und die Regeln anschliessend in einem Rutsch laden",
+      "Erst die SSH-Regel loeschen und neu anlegen, damit sie garantiert ganz oben steht"],
+     "Die runtime/permanent-Trennung ist ein eingebautes Sicherheitsnetz: Laufzeit-Aenderungen sind "
+     "fluechtig, der permanente Stand ist dein Rollback. --permanent zuerst macht einen Fehler "
+     "dauerhaft, firewalld stoppen laesst den Host nackt im Netz stehen."),
+
+    ("szenario",
+     "Dein Ansible-Playbook meldet bei jedem Lauf 'changed' fuer einen Task, der per command-Modul "
+     "'useradd deploy' ausfuehrt — beim zweiten Lauf schlaegt er sogar fehl. Die saubere Loesung?",
+     ["Das passende idempotente Modul verwenden (user: name=deploy state=present) — es prueft den Ist-Zustand und tut nur etwas, wenn noetig; command/shell kennen den Zielzustand nicht",
+      "ignore_errors: true setzen, damit der zweite Lauf nicht mehr abbricht",
+      "Den Task mit run_once auf den ersten Hostlauf begrenzen",
+      "Vor dem useradd per shell-Task 'userdel deploy' ausfuehren, damit es immer klappt"],
+     "Idempotenz kommt nicht von Ansible-Magie, sondern von den Modulen: user/dnf/copy/lineinfile "
+     "vergleichen Ist mit Soll. command feuert blind — daher 'changed' immer und Fehler beim zweiten "
+     "Mal. ignore_errors versteckt das Problem, loest es aber nicht."),
+
+    ("szenario",
+     "Du hast einen User per 'usermod -aG projektgruppe mueller' berechtigt. Er meldet sofort: "
+     "'Permission denied bleibt'. Auf dem Server zeigt 'id mueller' die Gruppe, 'groups' in SEINER "
+     "Session zeigt sie nicht. Woran liegt es?",
+     ["Gruppenmitgliedschaften werden beim Login in die Session geladen — seine bestehende Sitzung kennt die neue Gruppe noch nicht; neu einloggen (oder newgrp projektgruppe) genuegt",
+      "usermod -aG wird erst nach einem Neustart des Servers wirksam",
+      "Die Gruppe muss zusaetzlich in /etc/sudoers eingetragen werden",
+      "Das Verzeichnis muss per chgrp auf den User statt auf die Gruppe gestellt werden"],
+     "id <user> liest /etc/group (Soll), 'groups' in der Session zeigt die geerbten Credentials des "
+     "Login-Zeitpunkts (Ist). Der Unterschied der beiden Ausgaben IST die Diagnose. "
+     "Kein Reboot, kein sudoers — nur eine frische Session."),
+
+    ("szenario",
+     "Ein Server ist sporadisch nicht erreichbar, Pings verlieren schubweise Pakete. "
+     "'arping <server-ip>' liefert Antworten von ZWEI verschiedenen MAC-Adressen. Diagnose?",
+     ["IP-Adresskonflikt: ein zweites Geraet im Segment benutzt dieselbe IP — die Switches lernen abwechselnd beide MACs, der Verkehr pendelt; das Fremdgeraet identifizieren (MAC-Hersteller, Switch-Port) und umkonfigurieren",
+      "Der Server hat zwei Netzwerkkarten im Bonding — zwei MACs sind dort normal und harmlos",
+      "Die Switch-Firmware ist veraltet und dupliziert ARP-Antworten",
+      "MTU-Mismatch: zu grosse Pakete werden als zweite MAC fehlinterpretiert"],
+     "Zwei MACs fuer eine IP im arping ist der forensische Beweis fuer einen Adresskonflikt — haeufig "
+     "ein Testsystem oder eine vergessene statische Adresse im DHCP-Bereich. Aktiv-Backup-Bonding "
+     "antwortet mit EINER aktiven MAC; die anderen Optionen sind Nebelkerzen."),
+
+    ("szenario",
+     "CheckMK meldet einen Host als DOWN, aber du kommst problemlos per SSH drauf und alle Dienste "
+     "laufen. Dein naechster Schritt?",
+     ["Den Pruefpfad des Monitorings untersuchen: Womit prueft CheckMK (ICMP? Agent-Port 6556?) und blockiert eine neue Firewall-Regel oder Zonen-Aenderung genau diesen Weg — der 'Ausfall' ist vermutlich ein Monitoring-Blindflug, kein Serverproblem",
+      "Den Alarm quittieren und schliessen — der Server laeuft ja nachweislich",
+      "Den Server vorsorglich neu starten, damit Monitoring und Realitaet wieder uebereinstimmen",
+      "Den CheckMK-Server neu starten, da er offensichtlich falsche Daten liefert"],
+     "Monitoring prueft einen PFAD, nicht 'den Server'. SSH ok + Alarm DOWN heisst: der Pruefpfad "
+     "(oft ICMP oder der Agent-Port) ist gestoert — klassisch nach Firewall-Changes. Einfach quittieren "
+     "laesst einen blinden Fleck zurueck: der naechste ECHTE Ausfall wird unsichtbar."),
+
+    ("szenario",
+     "Eine Anwendung kann eine Datei nicht lesen. Der Kollege schlaegt vor: 'Mach halt chmod 777 drauf, "
+     "dann ist Ruhe.' Die fachlich richtige Reaktion?",
+     ["Ablehnen und die tatsaechliche Huerde diagnostizieren (Owner/Gruppe? fehlendes x auf einem Elternverzeichnis? SELinux-Denial in ausearch?) — dann minimal berechtigen, z. B. per Gruppe; 777 oeffnet die Datei fuer JEDEN Prozess und ueberdeckt die Ursache",
+      "Zustimmen, aber nur befristet: 777 setzen und in einem Ticket den Rueckbau vermerken",
+      "Zustimmen, denn innerhalb des Rechenzentrums sind Dateirechte ohnehin zweitrangig",
+      "Ablehnen und stattdessen die Anwendung grundsaetzlich als root laufen lassen"],
+     "777 ist fast nie die Antwort: Es beseitigt das Symptom fuer alle Zeit und fuer alle Angreifer "
+     "gleich mit. Der Profi-Reflex: Beweis erheben (ls -l den ganzen Pfad entlang, id, ausearch), dann "
+     "die kleinste wirksame Rechteaenderung. 'Befristet 777' bleibt erfahrungsgemaess fuer immer."),
+
+    ("szenario",
+     "Freitag, 16 Uhr: Ein Kollege will 'nur schnell' ein grosses Update auf dem zentralen "
+     "Produktions-Server einspielen, ohne Change-Ticket. Alles lief in der Testumgebung sauber. "
+     "Deine Haltung?",
+     ["Auf den Change-Prozess bestehen: geplantes Wartungsfenster, Ticket mit Rollback-Plan, Zweitperson — nicht aus Buerokratie, sondern weil ein Freitagabend-Fehler das ganze Wochenende ohne volle Besetzung brennt",
+      "Zustimmen — erfolgreich getestet heisst risikofrei, und schnelles Handeln zeigt Initiative",
+      "Zustimmen, sofern vorher ein vollstaendiges Backup des Servers laeuft",
+      "Ablehnen, weil Updates grundsaetzlich nur am Monatsanfang eingespielt werden duerfen"],
+     "Das ist eine Haltungs-Frage, keine Technikfrage: Test reduziert Risiko, eliminiert es nicht. "
+     "Change-Management existiert, damit das Restrisiko zu einem Zeitpunkt mit Plan, Rollback und "
+     "Personal eintritt — nicht Freitag 16 Uhr. Genau diese Antwort will ein Head of Server Operations hoeren."),
+
 ]
 
 # ---------------------------------------------------------------------------
@@ -1290,6 +1561,51 @@ def gen_subnet(rng):
                 [richtig] + f[:3],
                 "Blockgröße %d, Block beginnt bei .%d → letzte Adresse des Blocks ist .%d = Broadcast." % (block, start, start + block - 1))
 
+_TESTOPS = [
+    ("-f", "Datei existiert und ist eine reguläre Datei"),
+    ("-d", "Pfad existiert und ist ein Verzeichnis"),
+    ("-e", "Pfad existiert (egal welcher Typ)"),
+    ("-x", "Datei existiert und ist ausführbar"),
+    ("-r", "Datei existiert und ist lesbar"),
+    ("-w", "Datei existiert und ist beschreibbar"),
+    ("-s", "Datei existiert und ist nicht leer"),
+    ("-z", "String ist leer (Länge null)"),
+    ("-n", "String ist nicht leer"),
+]
+
+def gen_testop(rng):
+    op, bedeutung = rng.choice(_TESTOPS)
+    if rng.random() < 0.5:
+        falsch = [b for o, b in _TESTOPS if b != bedeutung]
+        rng.shuffle(falsch)
+        return ("scripting", "Bash-Test: Was prüft [ %s pfad ]?" % op,
+                [bedeutung] + falsch[:3],
+                "Die Datei-Tests (-f/-d/-e/-x/-r/-w/-s) und String-Tests (-z/-n) gehören ins Sofortwissen — jedes if im Betriebs-Skript hängt daran.")
+    else:
+        falsch = [o for o, b in _TESTOPS if o != op]
+        rng.shuffle(falsch)
+        return ("scripting", "Bash-Test: Welcher Operator prüft '%s'?" % bedeutung,
+                [op] + falsch[:3],
+                "Merkhilfen: f=file, d=directory, e=exists, s=size>0, z=zero-length. Der Rest ist rwx wie bei den Rechten.")
+
+def gen_bash_expansion(rng):
+    pfade = ["/var/log/app.log", "/opt/tools/backup.sh",
+             "/home/patrick/notes.txt", "/srv/data/report.csv"]
+    p = rng.choice(pfade)
+    formen = [
+        ("${p##*/}", p.rsplit("/", 1)[-1], "entfernt gierig von VORN bis zum letzten / — übrig bleibt der Dateiname (basename)"),
+        ("${p%/*}",  p.rsplit("/", 1)[0],  "entfernt kurz von HINTEN ab dem letzten / — übrig bleibt das Verzeichnis (dirname)"),
+        ("${p##*.}", p.rsplit(".", 1)[-1], "entfernt gierig von VORN bis zum letzten Punkt — übrig bleibt die Endung"),
+        ("${p%.*}",  p.rsplit(".", 1)[0],  "entfernt kurz von HINTEN ab dem letzten Punkt — streicht die Endung"),
+    ]
+    ausdruck, richtig, erkl = rng.choice(formen)
+    falsch = [w for _, w, _ in formen if w != richtig]
+    rng.shuffle(falsch)
+    return ("scripting",
+            'Parameter-Expansion: p="%s" — was liefert echo "%s"?' % (p, ausdruck),
+            [richtig] + falsch[:3],
+            "%s %s. Merksatz: # schneidet vorn, %% schneidet hinten; doppelt = gierig." % (ausdruck, erkl))
+
 def gen_signal(rng):
     pool = [
         ("SIGTERM", "15", "höfliche Beendigung mit Aufräum-Chance — der Standard von kill und systemctl stop"),
@@ -1317,6 +1633,7 @@ GENERATORS = [
     gen_oktal, gen_oktal_rueck, gen_load, gen_dnf,
     gen_selinux_cmd, gen_journal, gen_firewall, gen_lvm_cmd, gen_signal,
     gen_systemctl, gen_ports, gen_pfade, gen_ansible_mod, gen_subnet,
+    gen_testop, gen_bash_expansion,
 ]
 
 TOPIC_NAMEN = {
@@ -1327,6 +1644,8 @@ TOPIC_NAMEN = {
     "lvm": "K4 Storage & LVM", "netz": "K5 Netzwerk & firewalld",
     "ansible": "K6 Ansible", "itil": "K7 ITIL & Incident",
     "tcpip": "N1 TCP/IP, DHCP & VLANs",
+    "scripting": "N2 Bash-Scripting",
+    "szenario": "S1 Troubleshooting-Szenarien",
 }
 
 # ---------------------------------------------------------------------------
@@ -1428,7 +1747,7 @@ def liste():
         print("  %-12s %-26s %3d statisch%s" % (t, TOPIC_NAMEN[t], n, zusatz))
     print("Gesamt: %d statische Fragen + %d Generator-Archetypen mit Parameter-Pools"
           % (gesamt, len(GENERATORS)))
-    print("Distinkter Fragenraum: 745 gemessen über die Seeds 1-30000.")
+    print("Distinkter Fragenraum: 755 gemessen über die Seeds 1-30000 — das Subnetting-Thema allein ist praktisch unerschöpflich.")
 
 def main(argv):
     if "-h" in argv or "--help" in argv:
